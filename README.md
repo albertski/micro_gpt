@@ -49,6 +49,9 @@ This will:
 2. Train for 1,000 steps (~minutes on a modern machine)
 3. Generate 20 hallucinated names
 
+Use `--steps 50` when running the model for testing to keep it fast.
+- Example: `ruby bin/train train --steps 50`
+
 You can also pass a custom dataset file:
 
 ```sh
