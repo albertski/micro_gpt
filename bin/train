@@ -1,51 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# microGPT runner — trains a tiny GPT on a character-level names dataset
-# and generates new hallucinated names via autoregressive sampling.
-#
-# Usage: ruby bin/train [input_file]
-#   input_file defaults to "input.txt" in the project root.
-
-$stdout.sync = true
-
 require_relative "../lib/micro_gpt"
 
-srand(42) # Let there be order among chaos
-
-input_path = ARGV[0] || File.join(__dir__, "..", "input.txt")
-
-# --- Dataset & Tokenizer ---
-dataset = MicroGPT::Dataset.new(input_path)
-dataset.shuffle!
-tokenizer = MicroGPT::Tokenizer.new(dataset.documents)
-
-puts "num docs: #{dataset.size}"
-puts "vocab size: #{tokenizer.vocab_size}"
-
-# --- Model & Optimizer ---
-config = MicroGPT::Config.new
-
-model = MicroGPT::Model.new(config: config, vocab_size: tokenizer.vocab_size)
-puts "num params: #{model.params.size}"
-
-optimizer = MicroGPT::AdamOptimizer.new(params: model.params, config: config)
-
-# --- Training ---
-trainer = MicroGPT::Trainer.new(
-  model: model, optimizer: optimizer,
-  tokenizer: tokenizer, dataset: dataset, config: config
-)
-
-trainer.train do |step, loss|
-  printf("step %4d / %4d | loss %.4f\n", step, config.num_steps, loss)
-end
-
-# --- Inference: may the model babble back to us ---
-puts "\n--- inference (new, hallucinated names) ---"
-
-sampler = MicroGPT::Sampler.new(model: model, tokenizer: tokenizer, config: config)
-
-sampler.generate_batch.each_with_index do |sample, i|
-  printf("sample %2d: %s\n", i + 1, sample)
-end
+MicroGPT::CLI.start(ARGV)
