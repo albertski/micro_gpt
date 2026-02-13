@@ -52,7 +52,7 @@ This will:
 You can also pass a custom dataset file:
 
 ```sh
-ruby bin/train path/to/your/data.txt
+ruby bin/train train path/to/your/data.txt
 ```
 
 The dataset should be a text file with one document (e.g. name, word, short sentence) per line.
