@@ -6,6 +6,10 @@ This is the *full* algorithmic content of a GPT — autograd engine, transformer
 
 Educational / demonstrative purposes only — extremely inefficient by design.
 
+## In Simple Terms
+
+It reads a text file of names, learns the character patterns in those names (which letters tend to follow which), and then generates new, made-up names one character at a time based on what it learned. Same architecture as ChatGPT, just with ~4,000 parameters instead of hundreds of billions.
+
 ## What's Inside
 
 | Component | Description |
