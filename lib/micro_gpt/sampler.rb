@@ -9,16 +9,15 @@ module MicroGPT
       @config = config
     end
 
-    # Generates a single sample string.
-    def generate(temperature: nil)
-      temp = temperature || @config.temperature
+    # Generates a single sample string via autoregressive decoding.
+    def generate(temperature: @config.temperature)
       kv_cache = @model.new_kv_cache
       token_id = @tokenizer.bos_id
       collected = []
 
       @config.block_size.times do |pos_id|
         logits = @model.forward(token_id, pos_id, kv_cache)
-        probs  = NN.softmax(logits.map { |l| l / temp })
+        probs  = NN.softmax(logits.map { |l| l / temperature })
         token_id = Random.weighted_choice(probs.map(&:data))
 
         break if @tokenizer.bos?(token_id)
@@ -29,10 +28,9 @@ module MicroGPT
       @tokenizer.decode(collected)
     end
 
-    # Generates n samples. Defaults to config.num_samples.
-    def generate_batch(n: nil, temperature: nil)
-      count = n || @config.num_samples
-      Array.new(count) { generate(temperature: temperature) }
+    # Generates multiple samples. Defaults to config.num_samples.
+    def generate_batch(n: @config.num_samples, temperature: @config.temperature)
+      Array.new(n) { generate(temperature: temperature) }
     end
   end
 end

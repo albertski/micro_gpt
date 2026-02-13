@@ -46,54 +46,65 @@ module MicroGPT
       x = rmsnorm(x)
 
       @config.n_layer.times do |li|
-        # 1) Multi-head attention block
-        x_residual = x
-        x = rmsnorm(x)
-
-        q = linear(x, @state_dict["layer#{li}.attn_wq"])
-        k = linear(x, @state_dict["layer#{li}.attn_wk"])
-        v = linear(x, @state_dict["layer#{li}.attn_wv"])
-
-        kv_cache.keys[li] << k
-        kv_cache.values[li] << v
-
-        x_attn = []
-
-        @config.n_head.times do |h|
-          hs = h * @config.head_dim
-          q_h = q[hs, @config.head_dim]
-          k_h = kv_cache.keys[li].map { |ki| ki[hs, @config.head_dim] }
-          v_h = kv_cache.values[li].map { |vi| vi[hs, @config.head_dim] }
-
-          attn_logits = (0...k_h.size).map { |t|
-            (0...@config.head_dim).map { |j| q_h[j] * k_h[t][j] }.inject(:+) / @config.head_dim**0.5
-          }
-          attn_weights = softmax(attn_logits)
-
-          head_out = (0...@config.head_dim).map { |j|
-            (0...v_h.size).map { |t| attn_weights[t] * v_h[t][j] }.inject(:+)
-          }
-
-          x_attn.concat(head_out)
-        end
-
-        x = linear(x_attn, @state_dict["layer#{li}.attn_wo"])
-        x = x.zip(x_residual).map { |a, b| a + b }
-
-        # 2) MLP block
-        x_residual = x
-        x = rmsnorm(x)
-
-        x = linear(x, @state_dict["layer#{li}.mlp_fc1"])
-        x = x.map(&:relu)
-        x = linear(x, @state_dict["layer#{li}.mlp_fc2"])
-        x = x.zip(x_residual).map { |a, b| a + b }
+        x = attention_block(x, li, kv_cache)
+        x = mlp_block(x, li)
       end
 
       linear(x, @state_dict["lm_head"])
     end
 
     private
+
+    def attention_block(x, layer_idx, kv_cache)
+      x_residual = x
+      x = rmsnorm(x)
+
+      q = linear(x, @state_dict["layer#{layer_idx}.attn_wq"])
+      k = linear(x, @state_dict["layer#{layer_idx}.attn_wk"])
+      v = linear(x, @state_dict["layer#{layer_idx}.attn_wv"])
+
+      kv_cache.keys[layer_idx] << k
+      kv_cache.values[layer_idx] << v
+
+      x_attn = multi_head_attention(q, kv_cache.keys[layer_idx], kv_cache.values[layer_idx])
+
+      x = linear(x_attn, @state_dict["layer#{layer_idx}.attn_wo"])
+      add_residual(x, x_residual)
+    end
+
+    def multi_head_attention(q, cached_keys, cached_values)
+      scale = Math.sqrt(@config.head_dim)
+
+      @config.n_head.times.flat_map do |h|
+        hs = h * @config.head_dim
+        q_h = q[hs, @config.head_dim]
+        k_h = cached_keys.map { |ki| ki[hs, @config.head_dim] }
+        v_h = cached_values.map { |vi| vi[hs, @config.head_dim] }
+
+        attn_logits = k_h.map { |kt|
+          q_h.zip(kt).map { |qi, ki| qi * ki }.inject(:+) / scale
+        }
+        attn_weights = softmax(attn_logits)
+
+        (0...@config.head_dim).map { |j|
+          attn_weights.each_with_index.map { |w, t| w * v_h[t][j] }.inject(:+)
+        }
+      end
+    end
+
+    def mlp_block(x, layer_idx)
+      x_residual = x
+      x = rmsnorm(x)
+
+      x = linear(x, @state_dict["layer#{layer_idx}.mlp_fc1"])
+      x = x.map(&:relu)
+      x = linear(x, @state_dict["layer#{layer_idx}.mlp_fc2"])
+      add_residual(x, x_residual)
+    end
+
+    def add_residual(x, residual)
+      x.zip(residual).map { |a, b| a + b }
+    end
 
     def init_parameters
       sd = {

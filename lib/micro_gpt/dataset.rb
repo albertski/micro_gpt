@@ -9,7 +9,7 @@ module MicroGPT
     def initialize(path)
       raise ArgumentError, "File not found: #{path}" unless File.exist?(path)
 
-      @documents = File.read(path).strip.split("\n").map(&:strip).reject(&:empty?)
+      @documents = File.foreach(path).map(&:strip).reject(&:empty?)
     end
 
     # Returns the document at the given index, wrapping around with modulo.

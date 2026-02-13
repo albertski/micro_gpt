@@ -9,8 +9,8 @@ module MicroGPT
 
     # Builds vocabulary from an array of document strings.
     def initialize(documents)
-      @chars = documents.join.chars.uniq.sort
-      @char_to_id = @chars.each_with_index.to_h
+      @chars = documents.join.chars.uniq.sort.freeze
+      @char_to_id = @chars.each_with_index.to_h.freeze
       @bos_id = @chars.size
       @vocab_size = @chars.size + 1
     end
