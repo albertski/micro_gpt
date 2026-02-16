@@ -1,4 +1,4 @@
-# microGPT.rb
+# MicroGPT
 
 A minimal GPT (transformer language model) in pure Ruby, ported from [Andrej Karpathy's microGPT](https://gist.github.com/karpathy/8627fe009c40f57531cb18360106ce95) Python implementation (~243 lines).
 
