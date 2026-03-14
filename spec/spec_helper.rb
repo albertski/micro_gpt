@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../lib/micro_gpt"
+require 'debug'
 
 RSpec.configure do |config|
   config.before(:suite) { srand(42) }
